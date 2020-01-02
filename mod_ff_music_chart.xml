@@ -16,6 +16,7 @@ Music chart for joomla. Show music charts from us billboard, uk.
         <filename>helper.php</filename>
         <folder>assets</folder>
         <folder>tmpl</folder>
+        <folder>vendor</folder>
     </files>
     <languages>
         <language tag="en-GB">en-GB.mod_ff_music_chart.ini</language>
