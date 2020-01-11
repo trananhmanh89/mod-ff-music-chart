@@ -58,8 +58,8 @@ Music chart for joomla. Show music charts from us billboard, uk.
                     default="uk_top_100"
                     showon="source:officialcharts"
                     >
-                    <option value="uk_top_100">Uk Top 100</option>
-                    <option value="uk_top_40">Uk Top 40</option>
+                    <option value="uk_single_top_100">Uk Single Top 100</option>
+                    <option value="uk_album_top_100">Uk Album Top 100</option>
                 </field>
                 <field
                     name="num_item" 

@@ -69,15 +69,23 @@ class ModFFMusicChartHelper
 
         switch ($type) {
             case 'billboard_hot_100':
-                $data = self::getBillboardHot100();
+                $data = self::getBillboard('https://www.billboard.com/charts/hot-100');
                 break;
 
             case 'billboard_200':
-                $data = self::getBillboard200();
+                $data = self::getBillboard('https://www.billboard.com/charts/billboard-200');
                 break;
 
             case 'billboard_artist_100';
                 $data = self::getBillboarArtist100();
+                break;
+
+            case 'uk_single_top_100':
+                $data = self::getUkChart('https://www.officialcharts.com/charts/singles-chart/');
+                break;
+
+            case 'uk_album_top_100':
+                $data = self::getUkChart('https://www.officialcharts.com/charts/albums-chart/');
                 break;
             
             default:
@@ -95,6 +103,45 @@ class ModFFMusicChartHelper
         return $data;
     }
 
+    protected static function getUkChart($url)
+    {
+        $html = self::crawl($url);
+        
+        try {
+            $dom = DomQuery::create($html);
+            $dom->find('.headings')->remove();
+            $dom->find('.mobile-actions')->remove();
+            $dom->find('.actions-view')->remove();
+            $dom->find('tr > td > .adspace')->parent()->parent()->remove();
+
+            $list = $dom->find('.chart-positions > tr');
+            $items = array();
+
+            foreach ($list as $elm) {
+                $item = new stdClass;
+                $td = $elm->find('td');
+                $item->rank = (int) trim(DomQuery::create($td->get(0))->text());
+                $item->last = (int) trim(DomQuery::create($td->get(1))->text());
+                $item->peak = (int) trim(DomQuery::create($td->get(3))->text());
+                $item->duration = (int) trim(DomQuery::create($td->get(4))->text());
+                $item->trend = self::parseTrend($item);
+
+                $track = $elm->find('.track');
+                $item->title = trim($track->find('.title')->text());
+                $item->subtitle = trim($track->find('.artist')->text());
+
+                $cover = $track->find('.cover img');
+                $item->image = str_replace('img/small', 'img/medium', $cover->attr('src'));
+                
+                $items[] = $item;
+            }
+
+            return $items;
+        } catch (Exception $e) {
+            return array();
+        }
+    }
+
     protected static function getBillboarArtist100()
     {
         $html = self::crawl('https://www.billboard.com/charts/artist-100');
@@ -107,14 +154,14 @@ class ModFFMusicChartHelper
 
             foreach ($list as $elm) {
                 $item = new stdClass;
-                $item->title = $elm->data('title');
+                $item->title = trim($elm->data('title'));
                 $item->subtitle = '';
-                $item->rank = (int) $elm->data('rank');
+                $item->rank = (int) trim($elm->data('rank'));
 
                 $miniStats = $elm->find('.chart-list-item__ministats  > .chart-list-item__ministats-cell');
-                $item->last = (int) $miniStats->first()->text();
-                $item->duration = (int) $miniStats->last()->text();
-                $item->peak = (int) DomQuery::create($miniStats->get(1))->text();
+                $item->last = (int) trim($miniStats->first()->text());
+                $item->duration = (int) trim($miniStats->last()->text());
+                $item->peak = (int) trim(DomQuery::create($miniStats->get(1))->text());
 
                 $item->trend = self::parseTrend($item);
 
@@ -140,48 +187,9 @@ class ModFFMusicChartHelper
         }
     }
 
-    protected static function getBillboard200()
+    protected static function getBillboard($url)
     {
-        $html = self::crawl('https://www.billboard.com/charts/billboard-200');
-
-        try {
-            $dom = DomQuery::create($html);
-            $elm = $dom->find('#charts');
-            $data = $elm->attr('data-charts');
-            $data = @json_decode($data);
-
-            if (!$data || !is_array($data)) {
-                return array();
-            }
-
-            $chartData = array_map(function($item) {
-                $result = new stdClass;
-                $result->title = $item->title;
-                $result->subtitle = $item->artist_name;
-                $result->rank = (int) $item->rank;
-                $result->duration = (int) $item->history->weeks_on_chart;
-                $result->peak = (int) $item->history->peak_rank;
-                $result->last = (int) $item->history->last_week;
-                $result->trend = self::parseTrend($result);
-
-                if (isset($item->title_images->sizes->{'ye-landing-sm'})) {
-                    $result->image = 'https://charts-static.billboard.com' . $item->title_images->sizes->{'ye-landing-sm'}->Name;
-                } else {
-                    $result->image = '';
-                }
-
-                return $result;
-            }, $data);
-
-            return $chartData;
-        } catch (Exception $e) {
-            return array();
-        }
-    }
-
-    protected static function getBillboardHot100()
-    {
-        $html = self::crawl('https://www.billboard.com/charts/hot-100');
+        $html = self::crawl($url);
 
         try {
             $dom = DomQuery::create($html);
