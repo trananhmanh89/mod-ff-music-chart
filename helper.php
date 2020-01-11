@@ -72,6 +72,10 @@ class ModFFMusicChartHelper
             case 'billboard_hot_100':
                 $data = self::getBillboardHot100($params);
                 break;
+
+            case 'billboard_200':
+                $data = self::getBillboard200($params);
+                break;
             
             default:
                 $data = array();
@@ -88,9 +92,9 @@ class ModFFMusicChartHelper
         return $data;
     }
 
-    protected static function getBillboardHot100($params)
+    protected static function getBillboard200($params)
     {
-        $html = self::getContent('https://www.billboard.com/charts/hot-100');
+        $html = self::crawl('https://www.billboard.com/charts/billboard-200');
 
         try {
             $dom = DomQuery::create($html);
@@ -140,7 +144,59 @@ class ModFFMusicChartHelper
         }
     }
 
-    protected static function getContent($url)
+    protected static function getBillboardHot100($params)
+    {
+        $html = self::crawl('https://www.billboard.com/charts/hot-100');
+
+        try {
+            $dom = DomQuery::create($html);
+            $elm = $dom->find('#charts');
+            $data = $elm->attr('data-charts');
+            $data = @json_decode($data);
+
+            if (!$data || !is_array($data)) {
+                return array();
+            }
+
+            $chartData = array_map(function($item) use($params) {
+                $result = new stdClass;
+                $result->title = $item->title;
+                $result->subtitle = $item->artist_name;
+                $result->rank = (int) $item->rank;
+                $result->duration = (int) $item->history->weeks_on_chart;
+                $result->peak = (int) $item->history->peak_rank;
+                $result->last = (int) $item->history->last_week;
+
+                $trend = $result->rank - $result->last;
+
+                if ($item->history->weeks_on_chart == 1) {
+                    $result->trend = 'new';
+                } else if ($result->duration > 1 && !$result->last) {
+                    $result->trend = 'reenter';
+                } else if ($trend === 0) {
+                    $result->trend = 'steady';
+                } else if ($trend < 0 ) {
+                    $result->trend = 'rising';
+                } else {
+                    $result->trend = 'falling';
+                }
+
+                if (isset($item->title_images->sizes->{'ye-landing-sm'})) {
+                    $result->image = 'https://charts-static.billboard.com' . $item->title_images->sizes->{'ye-landing-sm'}->Name;
+                } else {
+                    $result->image = '';
+                }
+
+                return $result;
+            }, $data);
+
+            return $chartData;
+        } catch (Exception $e) {
+            return array();
+        }
+    }
+
+    protected static function crawl($url)
     {
         $app = JFactory::getApplication();
 

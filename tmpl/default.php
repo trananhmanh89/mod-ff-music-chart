@@ -60,7 +60,7 @@ foreach ($data as $key => $value) {
 ?>
 
 <div class="mod-<?php echo $module->id ?> ff-music-items">
-    <?php foreach ($data as $key => $item): ?>
+    <?php foreach ($items as $key => $item): ?>
     <div class="ff-music-item">
         <div class="ff-music-item__rank <?php echo $item->isLong ? 'ff-music-item__rank--long' : '' ?>">
             <div class="rank__number"><?php echo $key + 1 ?></div>
