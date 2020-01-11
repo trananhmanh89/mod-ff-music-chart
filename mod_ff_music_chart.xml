@@ -48,7 +48,7 @@ Music chart for joomla. Show music charts from us billboard, uk.
                     >
                     <option value="billboard_hot_100">Hot 100</option>
                     <option value="billboard_200">Billboard 200</option>
-                    <option value="artist_100">Artist 100</option>
+                    <option value="billboard_artist_100">Artist 100</option>
                 </field>
                 <field
                     name="official_chart"

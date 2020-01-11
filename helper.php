@@ -76,6 +76,10 @@ class ModFFMusicChartHelper
             case 'billboard_200':
                 $data = self::getBillboard200($params);
                 break;
+
+            case 'billboard_artist_100';
+                $data = self::getBillboarArtist100($params);
+                break;
             
             default:
                 $data = array();
@@ -90,6 +94,51 @@ class ModFFMusicChartHelper
         JFile::write($cacheFile, json_encode($data));
 
         return $data;
+    }
+
+    protected static function getBillboarArtist100($params)
+    {
+        $html = self::crawl('https://www.billboard.com/charts/artist-100');
+
+        try {
+            $dom = DomQuery::create($html);
+            
+            $list = $dom->find('.chart-list .chart-list-item');
+            $items = array();
+
+            foreach ($list as $elm) {
+                $item = new stdClass;
+                $item->title = $elm->data('title');
+                $item->subtitle = '';
+                $item->rank = (int) $elm->data('rank');
+
+                $miniStats = $elm->find('.chart-list-item__ministats  > .chart-list-item__ministats-cell');
+                $item->last = (int) $miniStats->first()->text();
+                $item->duration = (int) $miniStats->last()->text();
+                $item->peak = (int) DomQuery::create($miniStats->get(1))->text();
+
+                $item->trend = self::parseTrend($item);
+
+                $img = $elm->find('.chart-list-item__image-wrapper > img');
+                $src = $img->attr('src');
+                if (preg_match('/bb-placeholder-new\.jpg/', $src)) {
+                    $item->image = '';
+                } else {
+                    $srcset = $img->data('srcset');
+                    $set = explode(',', $srcset);
+                    $last = array_pop($set);
+                    $trimmed = trim($last);
+                    $exploded = explode(' ', $trimmed);
+                    $item->image = @$exploded[0];
+                }
+
+                $items[] = $item;
+            }
+
+            return $items;
+        } catch (Exception $e) {
+            return array();
+        }
     }
 
     protected static function getBillboard200($params)
@@ -114,20 +163,7 @@ class ModFFMusicChartHelper
                 $result->duration = (int) $item->history->weeks_on_chart;
                 $result->peak = (int) $item->history->peak_rank;
                 $result->last = (int) $item->history->last_week;
-
-                $trend = $result->rank - $result->last;
-
-                if ($item->history->weeks_on_chart == 1) {
-                    $result->trend = 'new';
-                } else if ($result->duration > 1 && !$result->last) {
-                    $result->trend = 'reenter';
-                } else if ($trend === 0) {
-                    $result->trend = 'steady';
-                } else if ($trend < 0 ) {
-                    $result->trend = 'rising';
-                } else {
-                    $result->trend = 'falling';
-                }
+                $result->trend = self::parseTrend($result);
 
                 if (isset($item->title_images->sizes->{'ye-landing-sm'})) {
                     $result->image = 'https://charts-static.billboard.com' . $item->title_images->sizes->{'ye-landing-sm'}->Name;
@@ -166,20 +202,7 @@ class ModFFMusicChartHelper
                 $result->duration = (int) $item->history->weeks_on_chart;
                 $result->peak = (int) $item->history->peak_rank;
                 $result->last = (int) $item->history->last_week;
-
-                $trend = $result->rank - $result->last;
-
-                if ($item->history->weeks_on_chart == 1) {
-                    $result->trend = 'new';
-                } else if ($result->duration > 1 && !$result->last) {
-                    $result->trend = 'reenter';
-                } else if ($trend === 0) {
-                    $result->trend = 'steady';
-                } else if ($trend < 0 ) {
-                    $result->trend = 'rising';
-                } else {
-                    $result->trend = 'falling';
-                }
+                $result->trend = self::parseTrend($result);
 
                 if (isset($item->title_images->sizes->{'ye-landing-sm'})) {
                     $result->image = 'https://charts-static.billboard.com' . $item->title_images->sizes->{'ye-landing-sm'}->Name;
@@ -193,6 +216,23 @@ class ModFFMusicChartHelper
             return $chartData;
         } catch (Exception $e) {
             return array();
+        }
+    }
+
+    protected static function parseTrend($item)
+    {
+        $trend = $item->rank - $item->last;
+
+        if ($item->duration == 1) {
+            return 'new';
+        } else if ($item->duration > 1 && !$item->last) {
+            return 'reenter';
+        } else if ($trend === 0) {
+            return 'steady';
+        } else if ($trend < 0 ) {
+            return 'rising';
+        } else {
+            return 'falling';
         }
     }
 
