@@ -1,6 +1,6 @@
 <?php
 /**
- * @package     Funfis
+ * @package     Music Chart Module
  * @subpackage  mod_ff_music_chart
  *
  * @copyright   https://funfis.com

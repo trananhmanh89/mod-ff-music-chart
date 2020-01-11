@@ -1,6 +1,14 @@
 <?php
+/**
+ * @package     DomQuery
+ *
+ * @copyright   https://funfis.com
+ * @license     MIT;
+ */
+
 
 namespace Rct567\DomQuery;
+defined('_JEXEC') or die('Restricted access');
 
 /**
  * Class DomQueryNodes

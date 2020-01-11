@@ -1,7 +1,7 @@
 <?php
 /**
- * @package     Funfis
- * @subpackage  mod_ff_billboard_chart
+ * @package     Music Chart Module
+ * @subpackage  mod_ff_music_chart
  *
  * @copyright   https://funfis.com
  * @license     GNU General Public License version 2 or later;
