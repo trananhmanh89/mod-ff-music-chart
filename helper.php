@@ -22,8 +22,7 @@ class ModFFMusicChartHelper
             $type = $params->get('official_chart');
         }
 
-        $numItem = $params->get('num_item');
-        $strId = "$source-$type-$numItem-" . $module->id;
+        $strId = "$source-$type-" . $module->id;
 
         $mediaPath = JPATH_ROOT . '/media/mod_ff_music_chart';
 
@@ -70,15 +69,15 @@ class ModFFMusicChartHelper
 
         switch ($type) {
             case 'billboard_hot_100':
-                $data = self::getBillboardHot100($params);
+                $data = self::getBillboardHot100();
                 break;
 
             case 'billboard_200':
-                $data = self::getBillboard200($params);
+                $data = self::getBillboard200();
                 break;
 
             case 'billboard_artist_100';
-                $data = self::getBillboarArtist100($params);
+                $data = self::getBillboarArtist100();
                 break;
             
             default:
@@ -96,7 +95,7 @@ class ModFFMusicChartHelper
         return $data;
     }
 
-    protected static function getBillboarArtist100($params)
+    protected static function getBillboarArtist100()
     {
         $html = self::crawl('https://www.billboard.com/charts/artist-100');
 
@@ -141,7 +140,7 @@ class ModFFMusicChartHelper
         }
     }
 
-    protected static function getBillboard200($params)
+    protected static function getBillboard200()
     {
         $html = self::crawl('https://www.billboard.com/charts/billboard-200');
 
@@ -155,7 +154,7 @@ class ModFFMusicChartHelper
                 return array();
             }
 
-            $chartData = array_map(function($item) use($params) {
+            $chartData = array_map(function($item) {
                 $result = new stdClass;
                 $result->title = $item->title;
                 $result->subtitle = $item->artist_name;
@@ -180,7 +179,7 @@ class ModFFMusicChartHelper
         }
     }
 
-    protected static function getBillboardHot100($params)
+    protected static function getBillboardHot100()
     {
         $html = self::crawl('https://www.billboard.com/charts/hot-100');
 
@@ -194,7 +193,7 @@ class ModFFMusicChartHelper
                 return array();
             }
 
-            $chartData = array_map(function($item) use($params) {
+            $chartData = array_map(function($item) {
                 $result = new stdClass;
                 $result->title = $item->title;
                 $result->subtitle = $item->artist_name;
@@ -281,8 +280,7 @@ class ModFFMusicChartHelper
             $type = $params->get('official_chart');
         }
 
-        $numItem = $params->get('num_item');
-        $strId = "$source-$type-$numItem-" . $module->id;
+        $strId = "$source-$type-" . $module->id;
 
         $mediaPath = JPATH_ROOT . '/media/mod_ff_music_chart';
 
