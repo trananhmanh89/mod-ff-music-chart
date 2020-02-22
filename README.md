@@ -1,7 +1,9 @@
 # Music Chart Display for Joomla
 
-**[Download](https://github.com/trananhmanh89/mod-ff-music-chart/releases)**
+## Download
+**[Link](https://github.com/trananhmanh89/mod-ff-music-chart/releases)**
 
+## Demo
 ![2020-01-11_231811](https://user-images.githubusercontent.com/20571336/75089293-dfb0ae00-5589-11ea-87ea-2f5cce073481.png)
 
 Music Chart module allows you to show chart from billboard.com or officialcharts.com on joomla.
