@@ -54,6 +54,7 @@ Contact me: <a href="https://github.com/trananhmanh89/mod-ff-music-chart" target
                     <option value="billboard_hot_100">Hot 100</option>
                     <option value="billboard_200">Billboard 200</option>
                     <option value="billboard_artist_100">Artist 100</option>
+                    <option value="billboard_top_pop_songs">Top Pop Songs</option>
                 </field>
                 <field
                     name="official_chart"

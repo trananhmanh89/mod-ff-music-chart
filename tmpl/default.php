@@ -7,6 +7,9 @@
  * @license     GNU General Public License version 2 or later;
  */
 
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Uri\Uri;
+
 defined('_JEXEC') or die('Restricted access');
 
 $num_item = +$params->get('num_item');
@@ -21,23 +24,23 @@ foreach ($data as $key => $value) {
 
     switch ($value->trend) {
         case 'rising':
-            $value->trend_icon = '<img src="'.JUri::root(true).'/modules/mod_ff_music_chart/assets/images/up.svg" />';
+            $value->trend_icon = '<img src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/up.svg" />';
             break;
 
         case 'falling':
-            $value->trend_icon = '<img src="'.JUri::root(true).'/modules/mod_ff_music_chart/assets/images/down.svg" />';
+            $value->trend_icon = '<img src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/down.svg" />';
             break;
 
         case 'steady':
-            $value->trend_icon = '<img src="'.JUri::root(true).'/modules/mod_ff_music_chart/assets/images/right.svg" />';
+            $value->trend_icon = '<img src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/right.svg" />';
             break;
 
         case 'reenter':
-            $value->trend_icon = JText::_('MOD_FF_MUSIC_CHART_RE_ENTER');
+            $value->trend_icon = Text::_('MOD_FF_MUSIC_CHART_RE_ENTER');
             break;
 
         default:
-            $value->trend_icon = JText::_('MOD_FF_MUSIC_CHART_NEW');
+            $value->trend_icon = Text::_('MOD_FF_MUSIC_CHART_NEW');
             break;
     }
 
@@ -77,16 +80,16 @@ foreach ($data as $key => $value) {
                 <span><?php echo $item->promo ?></span>
             </div>
             <div class="ff-music-item__meta">
-                <span title="<?php echo JText::_('MOD_FF_MUSIC_CHART_LAST_WEEK') ?>">
-                    <?php echo $item->last ?> <span class="ff-music-item__meta-label"><?php echo JText::_('MOD_FF_MUSIC_CHART_LAST') ?></span>
+                <span title="<?php echo Text::_('MOD_FF_MUSIC_CHART_LAST_WEEK') ?>">
+                    <?php echo $item->last ?> <span class="ff-music-item__meta-label"><?php echo Text::_('MOD_FF_MUSIC_CHART_LAST') ?></span>
                 </span> |
-                <span title="<?php echo JText::_('MOD_FF_MUSIC_CHART_PEAK') ?>">
-                    <?php echo $item->peak ?> <span class="ff-music-item__meta-label"><?php echo JText::_('MOD_FF_MUSIC_CHART_PEAK') ?></span>
+                <span title="<?php echo Text::_('MOD_FF_MUSIC_CHART_PEAK') ?>">
+                    <?php echo $item->peak ?> <span class="ff-music-item__meta-label"><?php echo Text::_('MOD_FF_MUSIC_CHART_PEAK') ?></span>
                 </span> |
-                <span title="<?php echo JText::_('MOD_FF_MUSIC_CHART_DURATION') ?>">
+                <span title="<?php echo Text::_('MOD_FF_MUSIC_CHART_DURATION') ?>">
                     <?php echo $item->duration ?> 
                     <span class="ff-music-item__meta-label">
-                        <?php echo $item->duration === 1 ? JText::_('MOD_FF_MUSIC_CHART_WEEK') : JText::_('MOD_FF_MUSIC_CHART_WEEKs') ?>
+                        <?php echo $item->duration === 1 ? Text::_('MOD_FF_MUSIC_CHART_WEEK') : Text::_('MOD_FF_MUSIC_CHART_WEEKs') ?>
                     </span>
                 </span>
             </div>

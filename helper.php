@@ -7,6 +7,13 @@
  * @license     GNU General Public License version 2 or later;
  */
 
+use Joomla\CMS\Factory;
+use Joomla\CMS\Filesystem\File;
+use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Http\HttpFactory;
+use Joomla\CMS\Table\Table;
+use Joomla\CMS\Uri\Uri;
+use Joomla\Registry\Registry;
 use Rct567\DomQuery\DomQuery;
 
 defined('_JEXEC') or die('Restricted access');
@@ -34,11 +41,11 @@ class ModFFMusicChartHelper
         $cacheFile = $mediaPath . '/cache-' . $strId . '.txt';
 
         if ($lastUpdate + $updateTime < $now && file_exists($cacheFile)) {
-            JHtml::_('behavior.core');
-            JHtml::_('jquery.framework');
+            HTMLHelper::_('behavior.core');
+            HTMLHelper::_('jquery.framework');
 
-            $doc = JFactory::getDocument();
-            $doc->addScript(JUri::root() . '/modules/mod_ff_music_chart/assets/update_ff_music_chart.js');
+            $doc = Factory::getDocument();
+            $doc->addScript(Uri::root() . '/modules/mod_ff_music_chart/assets/update_ff_music_chart.js');
             $doc->addScriptDeclaration(';updateFFMusicChart(' . $module->id . ');');
         }
 
@@ -54,7 +61,7 @@ class ModFFMusicChartHelper
 
     protected static function setCache($cacheFile, $updateTimeFile, $params)
     {
-        JFile::write($updateTimeFile, time());
+        File::write($updateTimeFile, time());
 
         require_once JPATH_ROOT . '/modules/mod_ff_music_chart/vendor/DomQuery/CssToXpath.php';
         require_once JPATH_ROOT . '/modules/mod_ff_music_chart/vendor/DomQuery/DomQueryNodes.php';
@@ -69,15 +76,19 @@ class ModFFMusicChartHelper
 
         switch ($type) {
             case 'billboard_hot_100':
-                $data = self::getBillboard('https://www.billboard.com/charts/hot-100');
+                $data = self::getBillboardChartByData('https://www.billboard.com/charts/hot-100');
                 break;
 
             case 'billboard_200':
-                $data = self::getBillboard('https://www.billboard.com/charts/billboard-200');
+                $data = self::getBillboardChartByData('https://www.billboard.com/charts/billboard-200');
                 break;
 
             case 'billboard_artist_100';
-                $data = self::getBillboarArtist100();
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/artist-100');
+                break;
+
+            case 'billboard_top_pop_songs';
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/pop-songs');
                 break;
 
             case 'uk_single_top_100':
@@ -94,11 +105,11 @@ class ModFFMusicChartHelper
         }
         
         if (!$data) {
-            JFactory::getApplication()->enQueueMessage("Module get data error.");
+            Factory::getApplication()->enQueueMessage("Module get data error.");
             return '';
         }
 
-        JFile::write($cacheFile, json_encode($data));
+        File::write($cacheFile, json_encode($data));
 
         return $data;
     }
@@ -142,9 +153,9 @@ class ModFFMusicChartHelper
         }
     }
 
-    protected static function getBillboarArtist100()
+    protected static function getBillboardChartByDom($url)
     {
-        $html = self::crawl('https://www.billboard.com/charts/artist-100');
+        $html = self::crawl($url);
 
         try {
             $dom = DomQuery::create($html);
@@ -187,7 +198,7 @@ class ModFFMusicChartHelper
         }
     }
 
-    protected static function getBillboard($url)
+    protected static function getBillboardChartByData($url)
     {
         $html = self::crawl($url);
 
@@ -245,14 +256,14 @@ class ModFFMusicChartHelper
 
     protected static function crawl($url)
     {
-        $app = JFactory::getApplication();
+        $app = Factory::getApplication();
 
-        $options = new JRegistry;
+        $options = new Registry();
         $options->set('userAgent', 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0');
 
         try
         {
-            $res = JHttpFactory::getHttp($options)->get($url);
+            $res = HttpFactory::getHttp($options)->get($url);
         } catch (RuntimeException $e)
         {
             $app->enQueueMessage("Could not open this url: " . $url);
@@ -270,17 +281,17 @@ class ModFFMusicChartHelper
 
     public static function updateCacheAjax()
     {
-        $input = JFactory::getApplication()->input;
+        $input = Factory::getApplication()->input;
         $id = $input->getInt('id', 0);
 
-        $module = JTable::getInstance('module');
+        $module = Table::getInstance('module');
         $module->load($id);
 
         if (!$module->id || $module->module !== 'mod_ff_music_chart' || !$module->published) {
             die('Error! Unknow module.');
         }
 
-        $params = new JRegistry($module->params);
+        $params = new Registry($module->params);
         $source = $params->get('source');
         if ($source === 'billboard') {
             $type = $params->get('billboard_chart');
