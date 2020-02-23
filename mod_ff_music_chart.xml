@@ -9,6 +9,7 @@
     <version>1.0.0</version>
     <description><![CDATA[
 Music chart for joomla. Show music charts from us billboard, uk.
+Contact me: <a href="https://github.com/trananhmanh89/mod-ff-music-chart" target="_blank" >Github</a>
 ]]></description>
     <files>
         <filename module="mod_ff_music_chart">mod_ff_music_chart.php</filename>
