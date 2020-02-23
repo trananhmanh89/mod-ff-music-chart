@@ -27,3 +27,5 @@ Choose option you want
 - Number of item: how many items do you want to display?
 - Default song cover: for some reason, some songs don't have cover. Module will use this image instead.
 
+## Like my work?
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/I3I71FSC5)
