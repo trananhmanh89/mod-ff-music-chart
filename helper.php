@@ -3,7 +3,7 @@
  * @package     Music Chart Display
  * @subpackage  mod_ff_music_chart
  *
- * @copyright   https://funfis.com
+ * @copyright   https://github.com/trananhmanh89/mod-ff-music-chart
  * @license     GNU General Public License version 2 or later;
  */
 

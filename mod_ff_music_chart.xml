@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="module" version="3.1" client="site" method="upgrade">
     <name>Music Chart Display</name>
-    <author>Funfis</author>
+    <author>MrMeo</author>
     <creationDate>December 2019</creationDate>
-    <copyright>https://funfis.com</copyright>
+    <copyright>https://github.com/trananhmanh89/mod-ff-music-chart</copyright>
     <license>GPL v2</license>
-    <authorEmail>funfis.com@gmail.com</authorEmail>
-    <authorUrl>https://funfis.com</authorUrl>
+    <authorUrl>https://github.com/trananhmanh89/mod-ff-music-chart</authorUrl>
     <version>1.0.0</version>
     <description><![CDATA[
 Music chart for joomla. Show music charts from us billboard, uk.
