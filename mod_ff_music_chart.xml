@@ -27,7 +27,12 @@ Music chart for joomla. Show music charts from us billboard, uk.
     </updateservers>
     <config>
         <fields name="params">
-            <fieldset name="basic">
+            <fieldset name="basic" addfieldpath="/modules/mod_ff_music_chart/fields">
+                <field
+                    type="sponsor"
+                    label="Like my work?"
+                    name="like_my_work"
+                />
                 <field
                     name="source"
                     type="list"
