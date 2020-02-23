@@ -2,7 +2,6 @@
 /**
  * @package     DomQuery
  *
- * @copyright   https://funfis.com
  * @license     MIT;
  */
 
