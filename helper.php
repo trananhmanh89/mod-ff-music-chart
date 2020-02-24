@@ -91,6 +91,14 @@ class ModFFMusicChartHelper
                 $data = self::getBillboardChartByDom('https://www.billboard.com/charts/pop-songs');
                 break;
 
+            case 'billboard_top_country_songs';
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-songs');
+                break;
+
+            case 'billboard_top_country_albums';
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-albums');
+                break;
+
             case 'uk_single_top_100':
                 $data = self::getUkChart('https://www.officialcharts.com/charts/singles-chart/');
                 break;
