@@ -15,6 +15,7 @@ Contact me: <a href="https://github.com/trananhmanh89/mod-ff-music-chart" target
         <filename module="mod_ff_music_chart">mod_ff_music_chart.php</filename>
         <filename>helper.php</filename>
         <folder>assets</folder>
+        <folder>fields</folder>
         <folder>tmpl</folder>
         <folder>vendor</folder>
     </files>
