@@ -174,7 +174,7 @@ class ModFFMusicChartHelper
             foreach ($list as $elm) {
                 $item = new stdClass;
                 $item->title = trim($elm->data('title'));
-                $item->subtitle = '';
+                $item->subtitle = trim($elm->data('artist'));
                 $item->rank = (int) trim($elm->data('rank'));
 
                 $miniStats = $elm->find('.chart-list-item__ministats  > .chart-list-item__ministats-cell');
