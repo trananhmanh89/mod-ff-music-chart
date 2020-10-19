@@ -154,7 +154,8 @@ class ModFFMusicChartHelper
                 $item->subtitle = trim($track->find('.artist')->text());
 
                 $cover = $track->find('.cover img');
-                $item->image = str_replace('img/small', 'img/medium', $cover->attr('src'));
+                $img = self::getImage('https://www.officialcharts.com', $cover->attr('src'));
+                $item->image = str_replace('img/small', 'img/medium', $img);
                 
                 $items[] = $item;
             }
@@ -162,6 +163,15 @@ class ModFFMusicChartHelper
             return $items;
         } catch (Exception $e) {
             return array();
+        }
+    }
+
+    protected static function getImage($host, $src)
+    {
+        if (preg_match('/^(http|https):\/\/.*/', $src)) {
+            return $src;
+        } else {
+            return $host . $src;
         }
     }
 

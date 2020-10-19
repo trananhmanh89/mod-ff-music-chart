@@ -10,6 +10,10 @@
     flex-shrink: 0;
 }
 
+.ff-music-item__image img {
+    width: 100%;
+}
+
 .ff-music-item__detail {
     flex: 1;
     padding-right: 5px;
