@@ -76,31 +76,31 @@ class ModFFMusicChartHelper
 
         switch ($type) {
             case 'billboard_hot_100':
-                $data = self::getBillboardChartByData('https://www.billboard.com/charts/hot-100');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/hot-100/');
                 break;
 
             case 'billboard_200':
-                $data = self::getBillboardChartByData('https://www.billboard.com/charts/billboard-200');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/billboard-200/');
                 break;
 
             case 'billboard_artist_100';
-                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/artist-100');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/artist-100/');
                 break;
 
             case 'billboard_top_pop_songs';
-                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/pop-songs');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/pop-songs/');
                 break;
 
             case 'billboard_top_country_songs';
-                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-songs');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-songs/');
                 break;
 
             case 'billboard_top_country_albums';
-                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-albums');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-albums/');
                 break;
 
             case 'billboard_country_airplay':
-                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-airplay');
+                $data = self::getBillboardChartByDom('https://www.billboard.com/charts/country-airplay/');
                 break;
 
             case 'uk_single_top_100':
@@ -182,14 +182,16 @@ class ModFFMusicChartHelper
         try {
             $dom = DomQuery::create($html);
             
-            $list = $dom->find('.chart-list .chart-list-item');
+            $list = $dom->find('.o-chart-results-list-row-container');
             $items = array();
 
             foreach ($list as $elm) {
                 $item = new stdClass;
-                $item->title = trim($elm->data('title'));
-                $item->subtitle = trim($elm->data('artist'));
-                $item->rank = (int) trim($elm->data('rank'));
+                $item->title = trim($elm->find('h3.c-title.a-no-trucate')->text());
+                $item->subtitle = trim($elm->find('span.c-label.a-no-trucate')->text());
+                $item->rank = (int) trim($elm->find('.o-chart-results-list__item span.c-label')->first()->text());
+
+                die('<pre>'.print_r($item, 1).'</pre>');
 
                 $miniStats = $elm->find('.chart-list-item__ministats  > .chart-list-item__ministats-cell');
                 $item->last = (int) trim($miniStats->first()->text());
