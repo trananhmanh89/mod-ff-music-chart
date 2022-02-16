@@ -143,10 +143,10 @@ class ModFFMusicChartHelper
             foreach ($list as $elm) {
                 $item = new stdClass;
                 $td = $elm->find('td');
-                $item->rank = (int) trim(DomQuery::create($td->get(0))->text());
-                $item->last = (int) trim(DomQuery::create($td->get(1))->text());
-                $item->peak = (int) trim(DomQuery::create($td->get(3))->text());
-                $item->duration = (int) trim(DomQuery::create($td->get(4))->text());
+                $item->rank = (int) trim(DomQuery::create($td[0])->text());
+                $item->last = (int) trim(DomQuery::create($td[1])->text());
+                $item->peak = (int) trim(DomQuery::create($td[3])->text());
+                $item->duration = (int) trim(DomQuery::create($td[4])->text());
                 $item->trend = self::parseTrend($item);
 
                 $track = $elm->find('.track');
@@ -185,37 +185,31 @@ class ModFFMusicChartHelper
             $list = $dom->find('.o-chart-results-list-row-container');
             $items = array();
 
-            foreach ($list as $elm) {
+            foreach ($list as $idx => $elm) {
                 $item = new stdClass;
-                $item->title = trim($elm->find('h3.c-title.a-no-trucate')->text());
-                $item->subtitle = trim($elm->find('span.c-label.a-no-trucate')->text());
-                $item->rank = (int) trim($elm->find('.o-chart-results-list__item span.c-label')->first()->text());
+                $item->rank = $idx + 1;
+                $results = $elm->find('.o-chart-results-list-row > li');
 
-                die('<pre>'.print_r($item, 1).'</pre>');
+                $cover = DomQuery::create($results[1]);
+                $item->image = $cover->find('.c-lazy-image__img')->attr('data-lazy-src');
 
-                $miniStats = $elm->find('.chart-list-item__ministats  > .chart-list-item__ministats-cell');
-                $item->last = (int) trim($miniStats->first()->text());
-                $item->duration = (int) trim($miniStats->last()->text());
-                $item->peak = (int) trim(DomQuery::create($miniStats->get(1))->text());
+                $trend = DomQuery::create($results[2]);
+                $item->trend = $trend->find('.c-svg > svg > g > path')->attr('d');
 
-                $item->trend = self::parseTrend($item);
+                // $item->title = trim($rank->find('h3.c-title.a-no-trucate')->text());
 
-                $img = $elm->find('.chart-list-item__image-wrapper > img');
-                $src = $img->attr('src');
-                if (preg_match('/bb-placeholder-new\.jpg/', $src)) {
-                    $item->image = '';
-                } else {
-                    $srcset = $img->data('srcset');
-                    $set = explode(',', $srcset);
-                    $last = array_pop($set);
-                    $trimmed = trim($last);
-                    $exploded = explode(' ', $trimmed);
-                    $item->image = @$exploded[0];
-                }
+                
+                // $item->subtitle = trim($elm->find('span.c-label.a-no-trucate')->text());
+
+                // $item->last = (int) trim($miniStats->first()->text());
+                // $item->duration = (int) trim($miniStats->last()->text());
+                // $item->peak = (int) trim(DomQuery::create($miniStats->get(1))->text());
+
+
 
                 $items[] = $item;
             }
-
+            die('<pre>'.print_r($items, 1).'</pre>');
             return $items;
         } catch (Exception $e) {
             return array();
