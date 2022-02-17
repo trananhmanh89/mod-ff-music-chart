@@ -24,15 +24,15 @@ foreach ($data as $key => $value) {
 
     switch ($value->trend) {
         case 'rising':
-            $value->trend_icon = '<img src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/up.svg" />';
+            $value->trend_icon = '<img width="20px" height="20px" src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/up.svg" />';
             break;
 
         case 'falling':
-            $value->trend_icon = '<img src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/down.svg" />';
+            $value->trend_icon = '<img width="20px" height="20px" src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/down.svg" />';
             break;
 
         case 'steady':
-            $value->trend_icon = '<img src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/right.svg" />';
+            $value->trend_icon = '<img width="20px" height="20px" src="'.Uri::root(true).'/modules/mod_ff_music_chart/assets/images/right.svg" />';
             break;
 
         case 'reenter':
