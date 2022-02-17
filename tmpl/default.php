@@ -95,7 +95,7 @@ foreach ($data as $key => $value) {
             </div>
         </div>
         <div class="ff-music-item__image">
-            <img src="<?php echo $item->image ?>" alt="<?php echo $item->title ?>">
+            <img width="100px" height="100px" src="<?php echo $item->image ?>" alt="<?php echo $item->title ?>" loading="lazy">
         </div>
     </div>
     <?php endforeach ?>

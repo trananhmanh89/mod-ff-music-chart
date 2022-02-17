@@ -190,26 +190,39 @@ class ModFFMusicChartHelper
                 $item->rank = $idx + 1;
                 $results = $elm->find('.o-chart-results-list-row > li');
 
-                $cover = DomQuery::create($results[1]);
+                $cover = $results[1];
                 $item->image = $cover->find('.c-lazy-image__img')->attr('data-lazy-src');
 
-                $trend = DomQuery::create($results[2]);
-                $item->trend = $trend->find('.c-svg > svg > g > path')->attr('d');
+                $trend = $results[2];
+                $trendLabel = strtolower(trim($trend->find('span.c-label')->text()));
+                $trendLabel = preg_replace('/\s+/', '', $trendLabel);
+                $trendSymbol = $trend->find('.c-svg > svg > g > path')->attr('d');
 
-                // $item->title = trim($rank->find('h3.c-title.a-no-trucate')->text());
+                if ($trendLabel === 'new') {
+                    $item->trend = 'new';
+                } else if ($trendLabel === 're-entry') {
+                    $item->trend = 'reenter';
+                } else if (preg_match('/^M642/', $trendSymbol)) {
+                    $item->trend = 'steady';
+                } else if (preg_match('/^M12/', $trendSymbol)) {
+                    $item->trend = 'falling';
+                } else {
+                    $item->trend = 'rising';
+                }
 
-                
-                // $item->subtitle = trim($elm->find('span.c-label.a-no-trucate')->text());
+                $info = $results[3];
+                $rankInfo = $info->children()->first()->children();
 
-                // $item->last = (int) trim($miniStats->first()->text());
-                // $item->duration = (int) trim($miniStats->last()->text());
-                // $item->peak = (int) trim(DomQuery::create($miniStats->get(1))->text());
+                $item->title = trim($rankInfo[0]->find('h3.c-title.a-no-trucate')->text());
+                $item->subtitle = trim($rankInfo[0]->find('span.c-label.a-no-trucate')->text());
 
-
+                $item->last = (int) trim($rankInfo[3]->text());
+                $item->peak = (int) trim($rankInfo[4]->text());
+                $item->duration = (int) trim($rankInfo[5]->text());
 
                 $items[] = $item;
             }
-            die('<pre>'.print_r($items, 1).'</pre>');
+
             return $items;
         } catch (Exception $e) {
             return array();
