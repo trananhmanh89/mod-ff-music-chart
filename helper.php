@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @package     Music Chart Display
  * @subpackage  mod_ff_music_chart
@@ -31,16 +32,17 @@ class ModFFMusicChartHelper
 
         $strId = "$source-$type-" . $module->id;
 
-        $mediaPath = JPATH_ROOT . '/media/mod_ff_music_chart';
+        $cachePath = Factory::getApplication()->get('cache_path');
+        $mediaPath = ($cachePath ?: JPATH_CACHE) . '/mod_ff_music_chart_cache';
 
         $updateTime = +$params->get('update_time', 0);
         $updateTimeFile = $mediaPath . '/lastUpdate-' . $strId . '.txt';
-        $lastUpdate = file_exists($updateTimeFile) ? +file_get_contents($updateTimeFile) : 0;
+        $lastUpdate = is_file($updateTimeFile) ? +file_get_contents($updateTimeFile) : 0;
         $now = time();
 
         $cacheFile = $mediaPath . '/cache-' . $strId . '.txt';
 
-        if ($lastUpdate + $updateTime < $now && file_exists($cacheFile)) {
+        if ($lastUpdate + $updateTime < $now && is_file($cacheFile)) {
             HTMLHelper::_('behavior.core');
             HTMLHelper::_('jquery.framework');
 
@@ -50,7 +52,7 @@ class ModFFMusicChartHelper
         }
 
 
-        if (file_exists($cacheFile)) {
+        if (is_file($cacheFile)) {
             return @json_decode(file_get_contents($cacheFile));
         }
 
@@ -110,12 +112,12 @@ class ModFFMusicChartHelper
             case 'uk_album_top_100':
                 $data = self::getUkChart('https://www.officialcharts.com/charts/albums-chart/');
                 break;
-            
+
             default:
                 $data = array();
                 break;
         }
-        
+
         if (!$data) {
             Factory::getApplication()->enQueueMessage("Module get data error.");
             return '';
@@ -129,7 +131,7 @@ class ModFFMusicChartHelper
     protected static function getUkChart($url)
     {
         $html = self::crawl($url);
-        
+
         try {
             $dom = DomQuery::create($html);
             $dom->find('.headings')->remove();
@@ -156,7 +158,7 @@ class ModFFMusicChartHelper
                 $cover = $track->find('.cover img');
                 $img = self::getImage('https://www.officialcharts.com', $cover->attr('src'));
                 $item->image = str_replace('img/small', 'img/medium', $img);
-                
+
                 $items[] = $item;
             }
 
@@ -181,44 +183,51 @@ class ModFFMusicChartHelper
 
         try {
             $dom = DomQuery::create($html);
-            
+
             $list = $dom->find('.o-chart-results-list-row-container');
             $items = array();
 
             foreach ($list as $idx => $elm) {
                 $item = new stdClass;
                 $item->rank = $idx + 1;
-                $results = $elm->find('.o-chart-results-list-row > li');
+                $results = $elm->find('ul.o-chart-results-list-row > li');
 
                 $cover = $results[1];
-                $item->image = $cover->find('.c-lazy-image__img')->attr('data-lazy-src');
+                $photo = $cover->find('.c-lazy-image__img');
+                $src = $photo->attr('src');
+                $dataSrc = $photo->attr('data-lazy-src');
+                $item->image = $dataSrc ?: $src;
 
                 $trend = $results[2];
-                $trendLabel = strtolower(trim($trend->find('span.c-label')->text()));
-                $trendLabel = preg_replace('/\s+/', '', $trendLabel);
-                $trendSymbol = $trend->find('.c-svg > svg > g > path')->attr('d');
 
-                if ($trendLabel === 'new') {
-                    $item->trend = 'new';
-                } else if ($trendLabel === 're-entry') {
-                    $item->trend = 'reenter';
-                } else if (preg_match('/^M642/', $trendSymbol)) {
+                if ($trend->find('.c-svg > svg > g > mask path[d="M14.5 0H.5v12h14z"]')->count()) {
                     $item->trend = 'steady';
-                } else if (preg_match('/^M12/', $trendSymbol)) {
-                    $item->trend = 'falling';
-                } else {
-                    $item->trend = 'rising';
+                } else if ($trend->children('span')->count()) {
+                    $text = trim($trend->find('span')->text());
+
+                    if ($text === 'NEW') {
+                        $item->trend = 'new';
+                    }
+
+                    if ($text === 'RE-ENTRY') {
+                        $item->trend = 'reenter';
+                    }
+                } else if ($trend->find('.c-svg > svg > g > mask path[d="M.187 0v14h12V0z"]')->count()) {
+                    if ($trend->find('.c-svg.u-transform-rotate-180deg')) {
+                        $item->trend = 'falling';
+                    } else {
+                        $item->trend = 'rising';
+                    }
                 }
 
                 $info = $results[3];
-                $rankInfo = $info->children()->first()->children();
+                $item->title = trim($info->find('h3.c-title')->text());
+                $item->subtitle = trim($info->find('span.c-label.a-no-trucate')->text());
 
-                $item->title = trim($rankInfo[0]->find('h3.c-title.a-no-trucate')->text());
-                $item->subtitle = trim($rankInfo[0]->find('span.c-label.a-no-trucate')->text());
-
-                $item->last = (int) trim($rankInfo[3]->text());
-                $item->peak = (int) trim($rankInfo[4]->text());
-                $item->duration = (int) trim($rankInfo[5]->text());
+                $rankInfo = $info->children('ul')->children('div')->children();
+                $item->last = (int) trim($rankInfo[0]->find('span')[1]->text());
+                $item->peak = (int) trim($rankInfo[1]->find('span')[1]->text());
+                $item->duration = (int) trim($rankInfo[2]->find('span')[1]->text());
 
                 $items[] = $item;
             }
@@ -243,7 +252,7 @@ class ModFFMusicChartHelper
                 return array();
             }
 
-            $chartData = array_map(function($item) {
+            $chartData = array_map(function ($item) {
                 $result = new stdClass;
                 $result->title = $item->title;
                 $result->subtitle = $item->artist_name;
@@ -278,7 +287,7 @@ class ModFFMusicChartHelper
             return 'reenter';
         } else if ($trend === 0) {
             return 'steady';
-        } else if ($trend < 0 ) {
+        } else if ($trend < 0) {
             return 'rising';
         } else {
             return 'falling';
@@ -292,17 +301,14 @@ class ModFFMusicChartHelper
         $options = new Registry();
         $options->set('userAgent', 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:41.0) Gecko/20100101 Firefox/41.0');
 
-        try
-        {
+        try {
             $res = HttpFactory::getHttp($options)->get($url);
-        } catch (RuntimeException $e)
-        {
+        } catch (RuntimeException $e) {
             $app->enQueueMessage("Could not open this url: " . $url);
             return '';
         }
 
-        if ($res->code != 200)
-        {
+        if ($res->code != 200) {
             $app->enQueueMessage("Could not open this url: " . $url);
             return '';
         }
@@ -332,13 +338,14 @@ class ModFFMusicChartHelper
 
         $strId = "$source-$type-" . $module->id;
 
-        $mediaPath = JPATH_ROOT . '/media/mod_ff_music_chart';
+        $cachePath = Factory::getApplication()->get('cache_path');
+        $mediaPath = ($cachePath ?: JPATH_CACHE) . '/mod_ff_music_chart_cache';
 
         $updateTime = +$params->get('update_time', 0);
         $updateTimeFile = $mediaPath . '/lastUpdate-' . $strId . '.txt';
-        $lastUpdate = file_exists($updateTimeFile) ? +file_get_contents($updateTimeFile) : 0;
+        $lastUpdate = is_file($updateTimeFile) ? +file_get_contents($updateTimeFile) : 0;
         $now = time();
-        
+
         $cacheFile = $mediaPath . '/cache-' . $strId . '.txt';
 
         if ($lastUpdate + $updateTime < $now) {

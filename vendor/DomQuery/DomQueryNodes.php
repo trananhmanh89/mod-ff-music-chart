@@ -1,24 +1,16 @@
 <?php
-/**
- * @package     DomQuery
- *
- * @license     MIT;
- */
-
 
 namespace Rct567\DomQuery;
-defined('_JEXEC') or die('Restricted access');
 
 /**
  * Class DomQueryNodes
  *
- * @property \DOMXPath $dom_xpath
- * @property $tagName
- * @property $nodeName
- * @property $nodeValue
- * @property $outerHTML
+ * @property string $tagName
+ * @property string $nodeName
+ * @property string $nodeValue
+ * @property string $outerHTML
  *
- * @method string getAttribute($name)
+ * @method string getAttribute(string $name)
  *
  * @package Rct567\DomQuery
  */
@@ -28,7 +20,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     /**
      * Instance of DOMDocument
      *
-     * @var \DOMDocument
+     * @var \DOMDocument|null
      */
     protected $document;
 
@@ -40,6 +32,13 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     protected $nodes = array();
 
     /**
+     * Instance of DOMXPath class
+     *
+     * @var \DOMXPath|null
+     */
+    protected $dom_xpath;
+
+    /**
      * Number of nodes
      *
      * @var integer
@@ -49,21 +48,21 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     /**
      * Load and return as xml
      *
-     * @var boolean
+     * @var bool
      */
     public $xml_mode;
 
     /**
      * Return xml with pi node (xml declaration) if in xml mode
      *
-     * @var boolean
+     * @var bool
      */
     public $xml_print_pi = false;
 
     /**
      * Preserve no newlines (prevent creating newlines in html result)
      *
-     * @var boolean
+     * @var bool
      */
     public $preserve_no_newlines;
 
@@ -78,30 +77,37 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
 
 
     /**
+     * Previous instance of the chain
+     *
+     * @var static|null
+     */
+    protected $prev_instance;
+
+    /**
      * Root instance who began the chain
      *
-     * @var static
+     * @var static|null
      */
     protected $root_instance;
 
     /**
      * Xpath expression used to create the result of this instance
      *
-     * @var string
+     * @var string|null
      */
     private $xpath_query;
 
     /**
      * Css selector given to create result of this instance
      *
-     * @var string
+     * @var string|null
      */
     private $css_query;
 
     /**
      * Jquery style property; css selector given to create result of this instance
      *
-     * @var string
+     * @var string|null
      */
     public $selector;
 
@@ -110,7 +116,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
      *
      * @throws \InvalidArgumentException
      */
-    public function __construct()
+    final public function __construct()
     {
         if (\func_num_args() === 2 && \is_string(\func_get_arg(0)) && strpos(func_get_arg(0), '<') === false) {
             $result = self::create(func_get_arg(1))->find(func_get_arg(0));
@@ -140,7 +146,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
      /**
-     * Create new instance of self with some properties of its parents
+     * Create new instance of self with some properties of its parents.
      *
      * @return static
      */
@@ -150,6 +156,11 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
 
         if (isset($this->document)) {
             $instance->setDomDocument($this->document);
+        }
+
+        // This should not be set the first time it is created.
+        if (isset($this->root_instance)) {
+            $instance->prev_instance = $this;
         }
 
         if (isset($this->root_instance)) {
@@ -170,13 +181,40 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Use xpath and return new DomQuery with resulting nodes
+     * Make xpath query relative by adding a dot, while keeping
+     * in mind there might be a union, so:
+     * '//div|//p', should become '(.//div|.//p)'.
      *
-     * @param $xpath_query
+     * @param string $xpath
+     *
+     * @return string
+     */
+    private static function xpathMakeQueryRelative(string $xpath)
+    {
+        $matching_slash_to_add_dot = '/(?<=[(]|^)(?![^\[]*])\//';
+
+        if (strpos($xpath, '|') === false) { // no union
+            return preg_replace($matching_slash_to_add_dot, './', $xpath, 1); // add dot before the forward slash
+        }
+
+        $expressions = preg_split('/\|(?![^\[]*\])/', $xpath); // split on union operators not inside brackets
+
+        $expressions = array_map(function ($expr) use ($matching_slash_to_add_dot) {
+            return  preg_replace($matching_slash_to_add_dot, './', trim($expr), 1); // add dot before the forward slash
+        }, $expressions);
+        $new_xpath = implode('|', $expressions);
+
+        return count($expressions) > 1 ? '(' . $new_xpath . ')' : $new_xpath;
+    }
+
+    /**
+     * Use xpath and return new DomQuery with resulting nodes.
+     *
+     * @param string $xpath_query
      *
      * @return static
      */
-    public function xpath($xpath_query)
+    public function xpath(string $xpath_query)
     {
         $result = $this->createChildInstance();
 
@@ -184,8 +222,9 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
             $result->xpath_query = $xpath_query;
 
             if (isset($this->root_instance) || isset($this->xpath_query)) {  // all nodes as context
+                $xpath_query_relative = self::xpathMakeQueryRelative($xpath_query);
                 foreach ($this->nodes as $node) {
-                    if ($result_node_list = $this->xpathQuery('.'.$xpath_query, $node)) {
+                    if ($result_node_list = $this->xpathQuery($xpath_query_relative, $node)) {
                         $result->loadDomNodeList($result_node_list);
                     }
                 }
@@ -200,9 +239,22 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Retrieve last created XPath query
+     * Retrieve last created XPath query.
      *
-     * @return string
+     * @return \DOMXPath|null
+     */
+    public function getDomXpath()
+    {
+        if (!$this->dom_xpath) {
+            $this->dom_xpath = $this->createDomXpath();
+        }
+        return $this->dom_xpath;
+    }
+
+    /**
+     * Retrieve last created XPath query.
+     *
+     * @return string|null
      */
     public function getXpathQuery()
     {
@@ -210,7 +262,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Create new instance
+     * Create new instance.
      *
      * @return static
      * @throws \InvalidArgumentException
@@ -225,7 +277,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Set dom document
+     * Set dom document.
      *
      * @param \DOMDocument $document
      *
@@ -242,14 +294,14 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Add nodes from dom node list to result set
+     * Add nodes from dom node list to result set.
      *
      * @param \DOMNodeList $dom_node_list
      *
      * @return void
      * @throws \Exception if no document is set and list is empty
      */
-    public function loadDomNodeList(\DOMNodeList $dom_node_list)
+    public function loadDomNodeList(\DOMNodeList $dom_node_list, $prepend=false)
     {
         if (!isset($this->document) && $dom_node_list->length === 0) {
             throw new \Exception('DOMDocument is missing!');
@@ -260,12 +312,38 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
         }
 
         foreach ($dom_node_list as $node) {
-            $this->addDomNode($node);
+            $this->addDomNode($node, $prepend);
         }
     }
 
     /**
-     * Add node to result set
+     * Add an array of nodes to the result set.
+     *
+     * @param \DOMNode[] $dom_nodes
+     *
+     * @return void
+     */
+    public function addDomNodes(array $dom_nodes)
+    {
+        if (!isset($dom_nodes[0])) {
+            return;
+        }
+
+        foreach ($dom_nodes as $dom_node) {
+            $this->nodes[] = $dom_node;
+        }
+
+        $this->length = \count($this->nodes);
+
+        if ($dom_nodes[0] instanceof \DOMDocument) {
+            $this->setDomDocument($dom_nodes[0]);
+        } else {
+            $this->setDomDocument($dom_nodes[0]->ownerDocument);
+        }
+    }
+
+    /**
+     * Add a single node to the result set.
      *
      * @param \DOMNode $dom_node
      * @param bool $prepend
@@ -275,40 +353,51 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     public function addDomNode(\DOMNode $dom_node, $prepend=false)
     {
         if ($prepend) {
-            array_unshift($this->nodes, $dom_node);
+            \array_unshift($this->nodes, $dom_node);
         } else {
             $this->nodes[] = $dom_node;
         }
 
         $this->length = \count($this->nodes);
-        $this->setDomDocument($dom_node->ownerDocument);
+
+        if ($dom_node instanceof \DOMDocument) {
+            $this->setDomDocument($dom_node);
+        } else {
+            $this->setDomDocument($dom_node->ownerDocument);
+        }
     }
 
     /**
-     * Load html or xml content
+     * Load html or xml content.
      *
-     * @param $content
-     * @param $encoding
+     * @param string $content
+     * @param string $encoding
      *
      * @return void
      */
-    public function loadContent($content, $encoding='UTF-8')
+    public function loadContent(string $content, $encoding='UTF-8')
     {
+
         $this->preserve_no_newlines = (strpos($content, '<') !== false && strpos($content, "\n") === false);
 
+        $content_has_leading_pi = stripos($content, '<?xml') === 0;
+
         if (!\is_bool($this->xml_mode)) {
-            $this->xml_mode = (stripos($content, '<?xml') === 0);
+            $this->xml_mode = $content_has_leading_pi;
         }
 
-        $this->xml_print_pi = (stripos($content, '<?xml') === 0);
+        $this->xml_print_pi = $content_has_leading_pi;
 
         $xml_pi_node_added = false;
-        if (!$this->xml_mode && $encoding && stripos($content, '<?xml') === false) {
+        if (!$this->xml_mode && $encoding && !$content_has_leading_pi) {
             $content = '<?xml encoding="'.$encoding.'">'.$content; // add pi node to make libxml use the correct encoding
             $xml_pi_node_added = true;
         }
 
-        libxml_disable_entity_loader(true);
+        if (\PHP_VERSION_ID < 80000) {
+            libxml_disable_entity_loader(true);
+        }
+
         libxml_use_internal_errors(true);
 
         $dom_document = new \DOMDocument('1.0', $encoding);
@@ -341,7 +430,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Grants access to the DOM nodes of this instance
+     * Grants access to the DOM nodes of this instance.
      *
      * @param int $index
      *
@@ -358,10 +447,10 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Get the descendants of each element in the current set of matched elements, filtered by a selector
+     * Get the descendants of each element in the current set of matched elements, filtered by a selector.
      *
      * @param string|static|\DOMNodeList|\DOMNode $selector A string containing a selector expression,
-     *  or DomQuery|DOMNodeList|DOMNode instance to match against
+     *  or DomQuery|DOMNodeList|DOMNode instance to match against.
      *
      * @return static
      */
@@ -402,45 +491,41 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Get next element from node
+     * Get next element from node.
      *
      * @param \DOMNode $node
      *
-     * @return \DOMNode
+     * @return \DOMElement|void
      */
     protected static function getNextElement(\DOMNode $node)
     {
-        while ($node && ($node = $node->nextSibling)) {
+        while ($node = $node->nextSibling) {
             if ($node instanceof \DOMElement) {
-                break;
+                return $node;
             }
         }
-
-        return $node;
     }
 
     /**
-     * Get next element from node
+     * Get previous element from node.
      *
      * @param \DOMNode $node
      *
-     * @return \DOMNode
+     * @return \DOMElement|void
      */
     protected static function getPreviousElement(\DOMNode $node)
     {
-        while ($node && ($node = $node->previousSibling)) {
+        while ($node = $node->previousSibling) {
             if ($node instanceof \DOMElement) {
-                break;
+                return $node;
             }
         }
-
-        return $node;
     }
 
     /**
-     * Retrieve last used CSS Query
+     * Retrieve last used CSS Query.
      *
-     * @return string
+     * @return string|null
      */
     public function getCssQuery()
     {
@@ -449,10 +534,10 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
 
     /**
      * Get the descendants of each element in the current set of matched elements, filtered by a selector.
-     * If no results are found a exception is thrown.
+     * If no results are found an exception is thrown.
      *
      * @param string|static|\DOMNodeList|\DOMNode $selector A string containing a selector expression,
-     * or DomQuery|DOMNodeList|DOMNode instance to match against
+     * or DomQuery|DOMNodeList|DOMNode instance to match against.
      *
      * @return static
      * @throws \Exception if no results are found
@@ -470,7 +555,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Iterate over result set and executing a callback for each node
+     * Iterate over result set and executing a callback for each node.
      *
      * @param callable $callback
      *
@@ -491,7 +576,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
 
     /**
      * Pass each element in the current matched set through a function,
-     * producing an array containing the return values
+     * producing an array containing the return values.
      *
      * @param callable $callback
      *
@@ -517,7 +602,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Returns dom elements
+     * Returns dom elements.
      *
      * @return \Generator
      */
@@ -531,7 +616,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Return array with nodes
+     * Return array with nodes.
      *
      * @return \DOMNode[]
      */
@@ -541,7 +626,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Return array with cloned nodes
+     * Return array with cloned nodes.
      *
      * @return \DOMNode[]
      */
@@ -563,7 +648,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Return array with nodes
+     * Return array with nodes.
      *
      * @return \DOMNode[]
      */
@@ -573,23 +658,24 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Add nodes to result set
+     * Add nodes to result set.
      *
      * @param \DOMNode[] $node_list
+     * @param bool $prepend
      *
      * @return void
      */
-    public function addNodes(array $node_list)
+    public function addNodes(array $node_list, $prepend=false)
     {
         foreach ($node_list as $node) {
-            $this->addDomNode($node);
+            $this->addDomNode($node, $prepend);
         }
     }
 
     /**
-     * Return first DOMElement
+     * Return first DOMElement.
      *
-     * @return \DOMElement|null
+     * @return \DOMElement|void
      */
     protected function getFirstElmNode()
     {
@@ -601,17 +687,14 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Access xpath or ... DOMNode properties (nodeName, parentNode etc) or get attribute value of first node
+     * Access xpath or ... DOMNode properties (nodeName, parentNode etc) or get attribute value of first node.
      *
-     * @param $name
+     * @param string $name
      *
      * @return \DOMXPath|\DOMNode|string|null
      */
     public function __get($name)
     {
-        if ($name === 'dom_xpath') {
-            return $this->createDomXpath();
-        }
         if ($name === 'outerHTML') {
             return $this->getOuterHtml();
         }
@@ -629,15 +712,15 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
      /**
-     * Call method on first DOMElement
+     * Call method on first DOMElement.
      *
-     * @param $name
-     * @param $arguments
+     * @param string $name
+     * @param mixed[] $arguments
      *
      * @return mixed
      * @throws \Exception
      */
-    public function __call($name, $arguments)
+    public function __call($name, array $arguments)
     {
         if (method_exists($this->getFirstElmNode(), $name)) {
             return \call_user_func_array(array($this->getFirstElmNode(), $name), $arguments);
@@ -647,18 +730,18 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Perform query via xpath expression (using DOMXPath::query)
+     * Perform query via xpath expression (using DOMXPath::query).
      *
-     * @param $expression
+     * @param string $expression
      * @param \DOMNode|null $context_node
      *
      * @return \DOMNodeList|false
      * @throws \Exception
      */
-    public function xpathQuery($expression, \DOMNode $context_node=null)
+    public function xpathQuery(string $expression, ?\DOMNode $context_node=null)
     {
-        if ($this->dom_xpath) {
-            $node_list = $this->dom_xpath->query($expression, $context_node);
+        if ($dom_xpath = $this->getDomXpath()) {
+            $node_list = $dom_xpath->query($expression, $context_node);
 
             if ($node_list instanceof \DOMNodeList) {
                 return $node_list;
@@ -673,12 +756,16 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
      /**
-     * Create dom xpath instance
+     * Create dom xpath instance.
      *
-     * @return \DOMXPath
+     * @return \DOMXPath|null
      */
     private function createDomXpath()
     {
+        if (!$this->document) {
+            return null;
+        }
+
         $xpath = new \DOMXPath($this->document);
 
         if ($this->xml_mode) { // register all name spaces
@@ -697,15 +784,15 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
      *
      * @return int
      */
-    public function count()
+    public function count(): int
     {
-        return \count($this->nodes);
+        return count($this->nodes);
     }
 
     /**
      * Retrieve DOMDocument
      *
-     * @return \DOMDocument
+     * @return \DOMDocument|null
      */
     public function getDocument()
     {
@@ -713,7 +800,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Return html of all nodes (HTML fragment describing all the elements, including their descendants)
+     * Return html of all nodes (HTML fragment describing all the elements, including their descendants).
      *
      * @return string
      */
@@ -742,11 +829,11 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Get id for node
+     * Get id for node.
      *
      * @param \DOMElement $node
      *
-     * @return $node_id
+     * @return string $node_id
      */
     public static function getElementId(\DOMElement $node)
     {
@@ -760,9 +847,9 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Handle html when resulting html is requested
+     * Handle html when resulting html is requested.
      *
-     * @param $html
+     * @param string $html
      *
      * @return string
      */
@@ -804,7 +891,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * Return html of all nodes
+     * Return html of all nodes.
      *
      * @return string
      */
@@ -814,11 +901,11 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
     }
 
     /**
-     * IteratorAggregate (note: using Iterator conflicts with next method in jquery)
+     * IteratorAggregate (note: using Iterator conflicts with next method in jquery).
      *
      * @return \ArrayIterator containing nodes as instances of DomQuery
      */
-    public function getIterator()
+    public function getIterator(): \ArrayIterator
     {
         $iteration_result = array();
         if (\is_array($this->nodes)) {
@@ -837,7 +924,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
      *
      * @return bool
      */
-    public function offsetExists($key)
+    public function offsetExists($key): bool
     {
         return isset($this->nodes[$key]);
     }
@@ -849,7 +936,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
      *
      * @return static
      */
-    public function offsetGet($key)
+    public function offsetGet($key): self
     {
         if (!\is_int($key)) {
             throw new \BadMethodCallException('Attempting to access node list with non-integer');
@@ -870,7 +957,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
      *
      * @throws \BadMethodCallException when attempting to write to a read-only item
      */
-    public function offsetSet($key, $value)
+    public function offsetSet($key, $value): void
     {
         throw new \BadMethodCallException('Attempting to write to a read-only node list');
     }
@@ -882,7 +969,7 @@ class DomQueryNodes implements \Countable, \IteratorAggregate, \ArrayAccess
      *
      * @throws \BadMethodCallException when attempting to unset a read-only item
      */
-    public function offsetUnset($key)
+    public function offsetUnset($key): void
     {
         throw new \BadMethodCallException('Attempting to unset on a read-only node list');
     }

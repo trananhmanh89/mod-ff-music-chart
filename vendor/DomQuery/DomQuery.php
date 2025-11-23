@@ -1,12 +1,6 @@
 <?php
-/**
- * @package     DomQuery
- *
- * @license     MIT;
- */
 
 namespace Rct567\DomQuery;
-defined('_JEXEC') or die('Restricted access');
 
 /**
  * Class DomQuery
@@ -18,7 +12,7 @@ class DomQuery extends DomQueryNodes
     /**
      * Node data
      *
-     * @var array
+     * @var array[]
      */
     private static $node_data = array();
 
@@ -28,7 +22,7 @@ class DomQuery extends DomQueryNodes
      *
      * @param string|null $val
      *
-     * @return $this|string|null
+     * @return $this|string|void
      */
     public function text($val=null)
     {
@@ -69,12 +63,12 @@ class DomQuery extends DomQueryNodes
      * Get the value of an attribute for the first element in the set of matched elements
      * or set one or more attributes for every matched element.
      *
-     * @param $name
-     * @param $val
+     * @param string $name
+     * @param string $val
      *
-     * @return $this|string|null
+     * @return $this|string|void
      */
-    public function attr($name, $val=null)
+    public function attr(string $name, $val=null)
     {
         if ($val !== null) { // set attribute for all nodes
             foreach ($this->getElements() as $node) {
@@ -91,12 +85,12 @@ class DomQuery extends DomQueryNodes
      * Store arbitrary data associated with the matched elements or return the value at
      * the named data store for the first element in the set of matched elements.
      *
-     * @param $key
-     * @param $val
+     * @param string $key
+     * @param mixed $val
      *
-     * @return $this|string|object
+     * @return $this|string|object|void
      */
-    public function data($key=null, $val=null)
+    public function data(?string $key=null, $val=null)
     {
         $doc_hash = spl_object_hash($this->document);
 
@@ -147,7 +141,7 @@ class DomQuery extends DomQueryNodes
      */
     public function removeData($name=null)
     {
-        $remove_names = \is_array($name) ? $name : explode(' ', $name);
+        $remove_names = \is_array($name) || \is_null($name) ? $name : explode(' ', $name);
         $doc_hash = spl_object_hash($this->document);
 
         if (!isset(self::$node_data[$doc_hash])) {
@@ -176,15 +170,15 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Convert css string to array
+     * Convert css string to array.
      *
-     * @param string containing style properties
+     * @param string $css_str containing style properties
      *
-     * @return array with name-value as style properties
+     * @return array<string, string> with key-value as style properties
      */
-    private static function parseStyle($css)
+    private static function parseStyle(string $css_str)
     {
-        $statements = explode(';', preg_replace('/\s+/s', ' ', $css));
+        $statements = explode(';', preg_replace('/\s+/s', ' ', $css_str));
         $styles = array();
 
         foreach ($statements as $statement) {
@@ -199,16 +193,16 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Convert css name-value array to string
+     * Convert css name-value array to string.
      *
-     * @param array with style properties
+     * @param array<string, string> $css_array with style properties
      *
      * @return string containing style properties
      */
-    private static function getStyle($array)
+    private static function getStyle(array $css_array)
     {
         $styles = '';
-        foreach ($array as $key => $value) {
+        foreach ($css_array as $key => $value) {
             $styles .= $key.': '.$value.';';
         }
         return $styles;
@@ -218,12 +212,12 @@ class DomQuery extends DomQueryNodes
      * Get the value of a computed style property for the first element in the set of matched elements
      * or set one or more CSS properties for every matched element.
      *
-     * @param $name
-     * @param $val
+     * @param string $name
+     * @param string $val
      *
-     * @return $this|string
+     * @return $this|string|void
      */
-    public function css($name, $val=null)
+    public function css(string $name, $val=null)
     {
         if ($val !== null) { // set css for all nodes
             foreach ($this->getElements() as $node) {
@@ -294,9 +288,9 @@ class DomQuery extends DomQueryNodes
     /**
      * Determine whether any of the matched elements are assigned the given class.
      *
-     * @param $class_name
+     * @param string $class_name
      *
-     * @return boolean
+     * @return bool
      */
     public function hasClass($class_name)
     {
@@ -377,12 +371,12 @@ class DomQuery extends DomQueryNodes
      * Get the value of a property for the first element in the set of matched elements
      * or set one or more properties for every matched element.
      *
-     * @param $name
-     * @param $val
+     * @param string $name
+     * @param string $val
      *
      * @return $this|mixed|null
      */
-    public function prop($name, $val=null)
+    public function prop(string $name, $val=null)
     {
         if ($val !== null) { // set attribute for all nodes
             foreach ($this->nodes as $node) {
@@ -424,14 +418,21 @@ class DomQuery extends DomQueryNodes
         $result = $this->createChildInstance();
 
         if (isset($this->document) && $this->length > 0) {
-            if (isset($this->root_instance) || $this->getXpathQuery()) {
+            $all_nodes_children_of_root = true;
+            foreach ($this->nodes as $node) {
+                if (!($node->parentNode instanceof \DOMDocument)) {
+                    $all_nodes_children_of_root = false;
+                }
+            }
+
+            if (!isset($this->root_instance) && $all_nodes_children_of_root) { // first instance direct access to children
+                $result->loadDomNodeList($this->document->childNodes);
+            } else {
                 foreach ($this->nodes as $node) {
                     if ($node->hasChildNodes()) {
                         $result->loadDomNodeList($node->childNodes);
                     }
                 }
-            } else {
-                $result->loadDomNodeList($this->document->childNodes);
             }
 
             if ($selector !== false) { // filter out text nodes
@@ -482,7 +483,7 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Get the parent of each element in the current set of matched elements, optionally filtered by a selector
+     * Get the parent of each element in the current set of matched elements, optionally filtered by a selector.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
      *
@@ -548,12 +549,14 @@ class DomQuery extends DomQueryNodes
         $result = $this->createChildInstance();
 
         if ($this->length > 0) {
-            if (\is_callable($selector)) {
+            if (!\is_string($selector) && \is_callable($selector)) {
                 foreach ($this->nodes as $index => $node) {
                     if (!$selector($node, $index)) {
                         $result->addDomNode($node);
                     }
                 }
+            } elseif ($selector === null) {
+                $result->addDomNodes($this->nodes);
             } else {
                 $selection = self::create($this->document)->find($selector);
 
@@ -580,9 +583,9 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Reduce the set of matched elements to those that match the selector
+     * Added elements that match the selector.
      *
-     * @param string|self|callable|\DOMNodeList|\DOMNode $selector
+     * @param string|self|\DOMNodeList|\DOMNode $selector
      * @param string|self|\DOMNodeList|\DOMNode|\DOMDocument $context
      *
      * @return self
@@ -590,7 +593,7 @@ class DomQuery extends DomQueryNodes
     public function add($selector, $context=null)
     {
         $result = $this->createChildInstance();
-        $result->nodes = $this->nodes;
+        $result->addDomNodes($this->nodes);
 
         $selection = $this->getTargetResult($selector, $context);
 
@@ -610,7 +613,7 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Reduce the set of matched elements to those that match the selector
+     * Reduce the set of matched elements to those that match the selector.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode $selector
      *
@@ -621,12 +624,14 @@ class DomQuery extends DomQueryNodes
         $result = $this->createChildInstance();
 
         if ($this->length > 0) {
-            if (\is_callable($selector)) {
+            if (!\is_string($selector) && \is_callable($selector)) {
                 foreach ($this->nodes as $index => $node) {
                     if ($selector($node, $index)) {
                         $result->addDomNode($node);
                     }
                 }
+            } elseif ($selector === null) {
+                $result->addDomNodes($this->nodes);
             } else {
                 $selection = self::create($this->document)->find($selector);
 
@@ -649,9 +654,19 @@ class DomQuery extends DomQueryNodes
      *
      * @return self
      */
-    public function cloneDeep()
+    public function clone()
     {
-        return $this->createChildInstance($this->getClonedNodes());
+        $new_instance = self::create($this->getClonedNodes());
+
+        if (\is_bool($this->xml_mode)) {
+            $new_instance->xml_mode = $this->xml_mode;
+        }
+
+        if (isset($this->document) && $this->dom_xpath instanceof \DOMXPath) {
+            $new_instance->dom_xpath = $this->dom_xpath;
+        }
+
+        return $new_instance;
     }
 
     /**
@@ -688,16 +703,16 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Check if any node matches the selector
+     * Check if any node matches the selector.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode $selector
      *
-     * @return boolean
+     * @return bool
      */
     public function is($selector)
     {
         if ($this->length > 0) {
-            if (\is_callable($selector)) {
+            if (!\is_string($selector) && \is_callable($selector)) {
                 foreach ($this->nodes as $index => $node) {
                     if ($selector($node, $index)) {
                         return true;
@@ -720,9 +735,9 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Reduce the set of matched elements to those that have a descendant that matches the selector
+     * Reduce the set of matched elements to those that have a descendant that matches the selector.
      *
-     * @param string|self|callable|\DOMNodeList|\DOMNode $selector
+     * @param string|self|\DOMNodeList|\DOMNode $selector
      *
      * @return self
      */
@@ -730,7 +745,7 @@ class DomQuery extends DomQueryNodes
     {
         $result = $this->createChildInstance();
 
-        if ($this->length > 0) {
+        if ($this->length > 0 && $selector !== null) {
             foreach ($this as $node) {
                 if ($node->find($selector)->length > 0) {
                     $result->addDomNode($node->get(0));
@@ -742,7 +757,7 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Reduce the set of matched elements to a subset specified by the offset and length (php like)
+     * Reduce the set of matched elements to a subset specified by the offset and length (php like).
      *
      * @param integer $offset
      * @param integer $length
@@ -770,7 +785,7 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Returns DomQuery with first node
+     * Returns DomQuery with first node.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
      *
@@ -786,7 +801,7 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Returns DomQuery with last node
+     * Returns DomQuery with last node.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
      *
@@ -802,7 +817,7 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Returns DomQuery with immediately following sibling of all nodes
+     * Returns DomQuery with immediately following sibling of all nodes.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
      *
@@ -856,7 +871,37 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Returns DomQuery with immediately preceding sibling of all nodes
+     * Get all following siblings up to but not including the element which matched by the selector.
+     *
+     * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
+     *
+     * @return self
+     */
+    public function nextUntil($selector=null)
+    {
+        $result = $this->createChildInstance();
+
+        if (isset($this->document) && $this->length > 0) {
+            foreach ($this->nodes as $node) {
+                $current = $node;
+                while ($next = self::getNextElement($current)) {
+                    if ($selector) {
+                        $current_result = $this->createChildInstance();
+                        $current_result->addDomNode($next);
+                        if ($current_result->is($selector)) {
+                            break 2;
+                        }
+                    }
+                    $result->addDomNode($next);
+                    $current = $next;
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Returns DomQuery with immediately preceding sibling of all nodes.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
      *
@@ -909,8 +954,39 @@ class DomQuery extends DomQueryNodes
         return $result;
     }
 
+
     /**
-     * Remove the set of matched elements
+     * Get all previous siblings up to but not including the element is matched by the selector.
+     *
+     * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that filters the set of matched elements
+     *
+     * @return self
+     */
+    public function prevUntil($selector=null)
+    {
+        $result = $this->createChildInstance();
+
+        if (isset($this->document) && $this->length > 0) {
+            foreach ($this->nodes as $node) {
+                $current = $node;
+                while ($prev = self::getPreviousElement($current)) {
+                    if ($selector) {
+                        $current_result = $this->createChildInstance();
+                        $current_result->addDomNode($prev);
+                        if ($current_result->is($selector)) {
+                            break 2;
+                        }
+                    }
+                    $result->addDomNode($prev);
+                    $current = $prev;
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Remove the set of matched elements.
      *
      * @param string|self|callable|\DOMNodeList|\DOMNode|null $selector expression that
      * filters the set of matched elements to be removed
@@ -936,46 +1012,60 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Import nodes and insert or append them via callback function
+     * Import nodes from content and call import function to insert or append them.
      *
      * @param string|self|array $content
      * @param callable $import_function
+     * @param bool $use_last_content_node if true then not clone, but directly use last content node if from same doc
      *
-     * @return void
+     * @return \DOMNode[] $imported_nodes
      */
-    private function importNodes($content, callable $import_function)
+    private function importNodes($content, callable $import_function, bool $use_last_content_node=true)
     {
+        $imported_nodes = [];
         if (\is_array($content)) {
             foreach ($content as $item) {
-                $this->importNodes($item, $import_function);
+                $imported_nodes = array_merge($imported_nodes, $this->importNodes($item, $import_function, $use_last_content_node));
             }
-        } else {
-            if (\is_string($content) && strpos($content, "\n") !== false) {
-                $this->preserve_no_newlines = false;
-                if (isset($this->root_instance)) {
-                    $this->root_instance->preserve_no_newlines = false;
-                }
-            }
+            return $imported_nodes;
+        }
 
-            if (!($content instanceof self)) {
-                $content = new self($content);
+        if (\is_string($content) && strpos($content, "\n") !== false) {
+            $this->preserve_no_newlines = false;
+            if (isset($this->root_instance)) {
+                $this->root_instance->preserve_no_newlines = false;
             }
+        }
 
-            foreach ($this->nodes as $node) {
-                foreach ($content->getNodes() as $content_node) {
-                    if ($content_node->ownerDocument === $node->ownerDocument) {
-                        $imported_node = $content_node->cloneNode(true);
+        if (!($content instanceof self)) {
+            $content = new self($content);
+        }
+
+        foreach ($this->nodes as $node_key => $node) {
+            foreach ($content->getNodes() as $content_node) {
+                $imported_node = null;
+                if ($content_node->ownerDocument === $node->ownerDocument) {
+                    if ($use_last_content_node && ($node_key+1) === count($this->nodes)) {
+                        $imported_node = $content_node;
                     } else {
-                        $imported_node = $this->document->importNode($content_node, true);
+                        $imported_node = $content_node->cloneNode(true);
                     }
+                } else {
+                    $imported_node = $this->document->importNode($content_node, true);
+                }
+
+                if ($imported_node instanceof \DOMNode) {
                     $import_function($node, $imported_node);
+                    $imported_nodes[] = $imported_node;
                 }
             }
         }
+
+        return $imported_nodes;
     }
 
     /**
-     * Get target result using selector or instance of self
+     * Get target result using selector or instance of self.
      *
      * @param string|self $target
      * @param string|self|\DOMNodeList|\DOMNode|\DOMDocument $context
@@ -998,9 +1088,9 @@ class DomQuery extends DomQueryNodes
      *
      * @return $this
      */
-    public function append()
+    public function append(...$content)
     {
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) {
+        $this->importNodes($content, function (\DOMNode $node, \DOMNode $imported_node) {
             $node->appendChild($imported_node);
         });
 
@@ -1012,28 +1102,29 @@ class DomQuery extends DomQueryNodes
      *
      * @param string|self $target
      *
-     * @return self
+     * @return self a new set consisting of the inserted elements
      */
     public function appendTo($target)
     {
         $target_result = $this->getTargetResult($target);
 
-        $target_result->append($this);
-        $this->remove();
+        $imported_nodes = $target_result->importNodes($this, function (\DOMNode $node, \DOMNode $imported_node) {
+            $node->appendChild($imported_node);
+        });
 
-        return $target_result;
+        return self::create($imported_nodes);
     }
 
     /**
-     * Insert content to the beginning of each element in the set of matched elements
+     * Insert content to the beginning of each element in the set of matched elements.
      *
      * @param string|self $content,...
      *
      * @return $this
      */
-    public function prepend()
+    public function prepend(...$content)
     {
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) {
+        $this->importNodes($content, function (\DOMNode $node, \DOMNode $imported_node) {
             $node->insertBefore($imported_node, $node->childNodes->item(0));
         });
 
@@ -1045,16 +1136,17 @@ class DomQuery extends DomQueryNodes
      *
      * @param string|self $target
      *
-     * @return self
+     * @return self a new set consisting of the inserted elements
      */
     public function prependTo($target)
     {
         $target_result = $this->getTargetResult($target);
 
-        $target_result->prepend($this);
-        $this->remove();
+        $imported_nodes = $target_result->importNodes($this, function (\DOMNode $node, \DOMNode $imported_node) {
+            $node->insertBefore($imported_node, $node->childNodes->item(0));
+        });
 
-        return $target_result;
+        return self::create($imported_nodes);
     }
 
     /**
@@ -1064,11 +1156,11 @@ class DomQuery extends DomQueryNodes
      *
      * @return $this
      */
-    public function before()
+    public function before(...$content)
     {
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) {
+        $this->importNodes($content, function (\DOMNode $node, \DOMNode $imported_node) {
             if ($node->parentNode instanceof \DOMDocument) {
-                throw new \Exception('Can not set before root element '.$node->tagName.' of document');
+                throw new \Exception('Can not use before() on this target, because the parent is the root of the document.');
             }
 
             $node->parentNode->insertBefore($imported_node, $node);
@@ -1084,9 +1176,12 @@ class DomQuery extends DomQueryNodes
      *
      * @return $this
      */
-    public function after()
+    public function after(...$content)
     {
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) {
+        $this->importNodes($content, function (\DOMNode $node, \DOMNode $imported_node) {
+            if ($node->parentNode instanceof \DOMDocument) {
+                throw new \Exception('Can not use after() on this target, because the parent is the root of the document.');
+            }
             if ($node->nextSibling) {
                 $node->parentNode->insertBefore($imported_node, $node->nextSibling);
             } else { // node is last, so there is no next sibling to insert before
@@ -1101,15 +1196,18 @@ class DomQuery extends DomQueryNodes
      * Replace each element in the set of matched elements with the provided
      * new content and return the set of elements that was removed.
      *
-     * @param string|self $new_content,...
+     * @param string|self $new_content
      *
      * @return self
      */
-    public function replaceWith()
+    public function replaceWith($new_content)
     {
         $removed_nodes = new self();
 
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) use (&$removed_nodes) {
+        $this->importNodes($new_content, function (\DOMNode $node, \DOMNode $imported_node) use (&$removed_nodes) {
+            if ($node->parentNode instanceof \DOMDocument) {
+                throw new \Exception('Can not use replaceWith() on this target, because the parent is the root of the document.');
+            }
             if ($node->nextSibling) {
                 $node->parentNode->insertBefore($imported_node, $node->nextSibling);
             } else { // node is last, so there is no next sibling to insert before
@@ -1119,27 +1217,21 @@ class DomQuery extends DomQueryNodes
             $node->parentNode->removeChild($node);
         });
 
-        foreach (\func_get_args() as $new_content) {
-            if (!\is_string($new_content)) {
-                self::create($new_content)->remove();
-            }
-        }
-
         return $removed_nodes;
     }
 
     /**
-     * Wrap an HTML structure around each element in the set of matched elements
+     * Wrap an HTML structure around each element in the set of matched elements.
      *
-     * @param string|self $content,...
+     * @param string|self $wrapping_element
      *
      * @return $this
      */
-    public function wrap()
+    public function wrap($wrapping_element)
     {
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) {
+        $this->importNodes($wrapping_element, function (\DOMNode $node, \DOMNode $imported_node) {
             if ($node->parentNode instanceof \DOMDocument) {
-                throw new \Exception('Can not wrap inside root element '.$node->tagName.' of document');
+                throw new \Exception('Can not use wrap() on this target, because the parent is the root of the document.');
             }
 
             // replace node with imported wrapper
@@ -1156,20 +1248,20 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Wrap an HTML structure around all elements in the set of matched elements
+     * Wrap an HTML structure around all elements in the set of matched elements.
      *
-     * @param string|self $content,...
+     * @param string|self $wrapping_element
      *
      * @return $this
      */
-    public function wrapAll()
+    public function wrapAll($wrapping_element)
     {
         $wrapper_node = null; // node given as wrapper
         $wrap_target_node = null; // node that wil be parent of content to be wrapped
 
-        $this->importNodes(\func_get_args(), function ($node, $imported_node) use (&$wrapper_node, &$wrap_target_node) {
+        $this->importNodes($wrapping_element, function (\DOMNode $node, \DOMNode $imported_node) use (&$wrapper_node, &$wrap_target_node) {
             if ($node->parentNode instanceof \DOMDocument) {
-                throw new \Exception('Can not wrap inside root element '.$node->tagName.' of document');
+                throw new \Exception('Can not use wrapAll() or wrapInner() on this target, because the parent is the root of the document.');
             }
             if ($wrapper_node && $wrap_target_node) { // already wrapped before
                 $old = $node->parentNode->removeChild($node);
@@ -1193,25 +1285,39 @@ class DomQuery extends DomQueryNodes
     }
 
     /**
-     * Wrap an HTML structure around the content of each element in the set of matched elements
+     * Wrap an HTML structure around the content of each element in the set of matched elements.
      *
-     * @param string|self $content,...
+     * @param string|self $wrapping_element
      *
      * @return $this
      */
-    public function wrapInner()
+    public function wrapInner($wrapping_element)
     {
         foreach ($this->nodes as $node) {
-            self::create($node->childNodes)->wrapAll(\func_get_args());
+            self::create($node->childNodes)->wrapAll($wrapping_element);
         }
 
         return $this;
     }
 
     /**
-     * Check if property exist for this instance
+     * Prepend the previous chain's element set into the current set.
      *
-     * @param $name
+     * @return $this
+     */
+    public function addBack()
+    {
+        if (isset($this->prev_instance)) {
+            // Use true for prepend.
+            $this->addNodes($this->prev_instance->nodes, true);
+        }
+        return $this;
+    }
+
+    /**
+     * Check if property exist for this instance.
+     *
+     * @param string $name
      *
      * @return boolean
      */

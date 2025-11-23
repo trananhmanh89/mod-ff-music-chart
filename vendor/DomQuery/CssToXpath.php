@@ -1,13 +1,7 @@
 <?php
-/**
- * @package     DomQuery
- *
- * @license     MIT;
- */
-
 
 namespace Rct567\DomQuery;
-defined('_JEXEC') or die('Restricted access');
+
 /**
  * Class CssToXpath
  */
@@ -17,7 +11,7 @@ class CssToXpath
     /**
      * Css selector to xpath cache
      *
-     * @var array
+     * @var array<string, string>
      */
     private static $xpath_cache = array();
 
@@ -28,19 +22,18 @@ class CssToXpath
      *
      * @return string xpath expression
      */
-    public static function transform($path)
+    public static function transform(string $path)
     {
         if (isset(self::$xpath_cache[$path])) {
             return self::$xpath_cache[$path];
         }
 
-        $tmp_path = self::replaceCharInsideEnclosure($path, ',');
-        if (strpos($tmp_path, ',') !== false) {
-            $paths = explode(',', $tmp_path);
-            $expressions = array();
+        // handle css grouping query (multiple queries combined with a comma)
 
+        $paths = preg_split('/\,(?![^\[]*]|[^()]*\))/', $path);
+        if (count($paths) > 1) {
+            $expressions = array();
             foreach ($paths as $single_path) {
-                $single_path = str_replace("\0", ',', $single_path); // restore commas
                 $xpath = self::transform(trim($single_path));
                 $expressions[] = $xpath;
             }
@@ -48,19 +41,13 @@ class CssToXpath
             return implode('|', $expressions);
         }
 
-        // replace spaces inside (), to correctly create tokens (restore later)
-
-        $path_escaped = self::replaceCharInsideEnclosure($path, ' ');
-
         // create tokens and analyze to create segments
 
-        $tokens = preg_split('/\s+/', $path_escaped);
+        $tokens = preg_split('/\s+(?![^\[]*]|[^()]*\))/', $path);
 
         $segments = array();
 
         foreach ($tokens as $key => $token) {
-            $token = str_replace("\0", ' ', $token); // restore spaces
-
             if ($segment = self::getSegmentFromToken($token, $key, $tokens)) {
                 $segments[] = $segment;
             }
@@ -80,35 +67,6 @@ class CssToXpath
     }
 
     /**
-     * Replace char with null bytes inside (optionally specified) enclosure
-     *
-     * @param string $str
-     * @param string $search_char
-     * @param string $enclosure_open
-     * @param string $enclosure_close
-     *
-     * @return string $str
-     */
-    private static function replaceCharInsideEnclosure($str, $search_char, $enclosure_open='(', $enclosure_close=')')
-    {
-        if ($str === '' || strpos($str, $search_char) === false || strpos($str, $enclosure_open) === false) {
-            return $str;
-        }
-
-        for ($i = 0, $str_length = \strlen($str); $i < $str_length; $i++) {
-            if ($i > 0 && $str[$i] === $search_char) {
-                // check if enclosure is open by counting char before position
-                $enclosure_is_open = substr_count($str, $enclosure_open, 0, $i) !== substr_count($str, $enclosure_close, 0, $i);
-                if ($enclosure_is_open) {
-                    $str[$i] = "\0";
-                }
-            }
-        }
-
-        return $str;
-    }
-
-    /**
      * Get segment data from token (css selector delimited by space and commas)
      *
      * @param string $token
@@ -117,7 +75,7 @@ class CssToXpath
      *
      * @return object|false $segment
      */
-    private static function getSegmentFromToken($token, $key, $tokens)
+    private static function getSegmentFromToken($token, $key, array $tokens)
     {
         $relation_tokens = array('>', '~', '+');
 
@@ -155,7 +113,7 @@ class CssToXpath
 
         $segment->selector = $token;
 
-        while (preg_match('/(.*)\:(not|contains|has)\((.+)\)$/i', $segment->selector, $matches)) { // pseudo selector
+        while (preg_match('/(.*)\:(not|contains|has|nth\-child)\((.+)\)$/i', $segment->selector, $matches)) { // pseudo selector
             $segment->selector = $matches[1];
             $segment->pseudo_filters[] = $matches[2].'('.$matches[3].')';
         }
@@ -185,17 +143,14 @@ class CssToXpath
                 return preg_replace_callback(
                     '#(ESCAPED)([0-9]{1,3})#',
                     function ($matches) {
-                        return \chr($matches[2]);
+                        return \chr(intval($matches[2]));
                     },
                     $str
                 );
             };
 
             $segment->selector = $set_escape_back($segment->selector);
-
-            foreach ($segment->attribute_filters as &$attr_filter) {
-                $attr_filter = $set_escape_back($attr_filter);
-            }
+            $segment->attribute_filters = array_map($set_escape_back, $segment->attribute_filters);
         }
 
         return $segment;
@@ -204,11 +159,11 @@ class CssToXpath
     /**
      * Transform css segments to xpath
      *
-     * @param object[] $segments
+     * @param array<int, object> $segments
      *
      * @return string[] $new_path_tokens
      */
-    private static function transformCssSegments($segments)
+    private static function transformCssSegments(array $segments)
     {
         $new_path_tokens = array();
 
@@ -253,7 +208,7 @@ class CssToXpath
      * @return string transformed expression (xpath)
      * @throws \Exception
      */
-    private static function transformCssPseudoSelector($expression, &$new_path_tokens)
+    private static function transformCssPseudoSelector($expression, array &$new_path_tokens)
     {
         if (preg_match('|not\((.+)\)|i', $expression, $matches)) {
             $parts = explode(',', $matches[1]);
@@ -263,6 +218,8 @@ class CssToXpath
             }
             $not_selector = implode(' or ', $parts);
             return '[not('.$not_selector.')]';
+        } elseif (preg_match('|nth\-child\((.+)\)|i', $expression, $matches)) {
+            return '[position()='.$matches[1].']';
         } elseif (preg_match('|contains\((.+)\)|i', $expression, $matches)) {
             return '[text()[contains(.,\''.$matches[1].'\')]]'; // contain the specified text
         } elseif (preg_match('|has\((.+)\)|i', $expression, $matches)) {
