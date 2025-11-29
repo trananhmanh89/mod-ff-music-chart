@@ -213,7 +213,7 @@ class ModFFMusicChartHelper
                         $item->trend = 'reenter';
                     }
                 } else if ($trend->find('.c-svg > svg > g > mask path[d="M.187 0v14h12V0z"]')->count()) {
-                    if ($trend->find('.c-svg.u-transform-rotate-180deg')) {
+                    if ($trend->find('.c-svg.u-transform-rotate-180deg')->count()) {
                         $item->trend = 'falling';
                     } else {
                         $item->trend = 'rising';
